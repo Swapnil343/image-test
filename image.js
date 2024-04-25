@@ -1,52 +1,43 @@
-require('dotenv').config()
+require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
-const fs = require("fs");
-const path = require("path");
-console.log(process.env.mongo_key)
-mongoose.connect(process.env.mongo_key);
+
+mongoose.connect(process.env.mongo_key, { useNewUrlParser: true, useUnifiedTopology: true });
 const app = express();
 
-app.use(bodyParser.raw({ type: 'image/*' })); 
+app.use(bodyParser.raw({ type: 'image/*' }));
 
 const UserSchema = new mongoose.Schema({
-    image: String
+    image: Buffer // Storing image data as a Buffer
 });
 
-const ImageModel = mongoose.model('Image', UserSchema); 
-const imageDirectory="C:/Users/youga/OneDrive/Desktop/Test";
+const ImageModel = mongoose.model('Image', UserSchema);
 
 app.get('/data', (req, res) => {
-    ImageModel.find({}).then(function(users){
-        //res.send(imageName);
-        res.send(users);
-    }).catch(function(err){
-        console.log(err)
-    })
-});
-
-app.post('/upload', (req, res) => {
-    const imageName =Date.now()+".jpeg";
-    const imagePath=path.join(imageDirectory,imageName);
-    const imageBuffer = req.body;
-    fs.writeFile(imagePath, imageBuffer, (err) => {
-        if (err) {
-            res.send("Error saving image to disk");
-        } else {
-            const newImage = new ImageModel({ imageName: imageName });
-            newImage.save()
-                .then(image => {
-                    res.send("Image uploaded and saved successfully");
-                })
-                .catch(err => {
-                    console.error(err);
-                    res.send("Error saving image to database");
-                });
-        }
+    ImageModel.find({}).then(function(images) {
+        res.send(images);
+    }).catch(function(err) {
+        console.log(err);
+        res.status(500).send("Error retrieving images from database");
     });
 });
 
-app.listen(process.env.PORT, () => {
-    console.log("Server is running at port ", process.env.PORT);
+app.post('/upload', (req, res) => {
+    const imageBuffer = req.body;
+    const newImage = new ImageModel({ image: imageBuffer });
+
+    newImage.save()
+        .then(image => {
+            res.send("Image uploaded and saved successfully");
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).send("Error saving image to database");
+        });
+});
+
+const PORT = process.env.PORT ;
+app.listen(PORT, () => {
+    console.log("Server is running at port ", PORT);
 });
